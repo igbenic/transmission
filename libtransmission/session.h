@@ -916,6 +916,11 @@ public:
 
     /*module_visible*/
 
+    [[nodiscard]] constexpr auto const& client_groups() const noexcept
+    {
+        return client_groups_;
+    }
+
     auto rpcNotify(tr_rpc_callback_type type, std::optional<tr_torrent_id_t> tor_id = {})
     {
         if (rpc_func_)
@@ -1162,6 +1167,7 @@ private:
     friend void tr_sessionSetQueueSize(tr_session* session, tr_direction dir, size_t max_simultaneous_torrents);
     friend void tr_sessionSetQueueStalledEnabled(tr_session* session, bool is_enabled);
     friend void tr_sessionSetQueueStalledMinutes(tr_session* session, size_t minutes);
+    friend void tr_sessionSetClientGroupsProvider(tr_session* session, tr_client_groups_provider provider);
     friend void tr_sessionSetRPCCallback(tr_session* session, tr_rpc_func func);
     friend void tr_sessionSetRPCEnabled(tr_session* session, bool is_enabled);
     friend void tr_sessionSetRPCPassword(tr_session* session, std::string_view password);
@@ -1234,6 +1240,8 @@ private:
     tr_torrent_completeness_func completeness_func_ = nullptr;
 
     tr_rpc_func rpc_func_ = nullptr;
+
+    tr_client_groups_provider client_groups_;
 
     tr_altSpeedFunc alt_speed_active_changed_func_ = nullptr;
 

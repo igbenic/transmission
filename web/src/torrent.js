@@ -168,6 +168,9 @@ export class Torrent extends EventTarget {
   getId() {
     return this.fields.id;
   }
+  getClientGroup() {
+    return this.fields.client_group ?? -1;
+  }
   getLabels() {
     return this.fields.labels.toSorted();
   }
@@ -605,6 +608,7 @@ Torrent.Fields.Metadata = [
 
 // commonly used fields which need to be periodically refreshed
 Torrent.Fields.Stats = [
+  'client_group',
   'error',
   'error_string',
   'eta',

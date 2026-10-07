@@ -15,6 +15,7 @@ import { PrefsDialog } from './prefs-dialog.js';
 import { Remote, RPC } from './remote.js';
 import { RemoveDialog } from './remove-dialog.js';
 import { RenameDialog } from './rename-dialog.js';
+import { GroupDialog } from './group-dialog.js';
 import { LabelsDialog } from './labels-dialog.js';
 import { ShortcutsDialog } from './shortcuts-dialog.js';
 import { StatisticsDialog } from './statistics-dialog.js';
@@ -214,6 +215,9 @@ export class Transmission extends EventTarget {
           break;
         case 'show-rename-dialog':
           this.setCurrentPopup(new RenameDialog(this, this.remote));
+          break;
+        case 'show-group-dialog':
+          this.setCurrentPopup(new GroupDialog(this, this.remote));
           break;
         case 'show-labels-dialog':
           this.setCurrentPopup(new LabelsDialog(this, this.remote));

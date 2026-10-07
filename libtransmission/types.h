@@ -15,6 +15,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "libtransmission/values.h"
 
@@ -744,6 +745,32 @@ using tr_torrent_completeness_func = std::function<void(tr_torrent_id_t, tr_comp
 using tr_torrent_remove_func = std::function<bool(std::string_view filename, tr_error* error)>;
 
 using tr_rpc_func = std::function<tr_rpc_callback_status(tr_rpc_callback_type type, std::optional<tr_torrent_id_t>)>;
+
+/**
+ * A client-defined torrent group, e.g. the groups in the macOS app.
+ * Each group may carry the download folder its torrents belong in.
+ */
+struct tr_client_group
+{
+    int64_t id = -1;
+    std::string name;
+    std::string download_dir; // empty if the group has no folder
+};
+
+/**
+ * Lets a client expose its own torrent groups over RPC.
+ *
+ * All callbacks are invoked FROM LIBTRANSMISSION'S THREAD,
+ * so they must be fast, must not call libtransmission functions,
+ * and must guard any client-level memory they touch with a mutex.
+ * In particular, `set` should hand the change off to the client's own thread.
+ */
+struct tr_client_groups_provider
+{
+    std::function<std::vector<tr_client_group>()> list;
+    std::function<int64_t(tr_torrent_id_t)> get; // group id, or -1 for none
+    std::function<void(tr_torrent_id_t, int64_t)> set; // group id, or -1 for none
+};
 
 using tr_torrent_rename_done_func = std::function<
     void(tr_torrent_id_t, std::string_view oldpath, std::string_view newname, tr_error const&)>;

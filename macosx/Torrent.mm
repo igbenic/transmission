@@ -1549,6 +1549,27 @@ static tr_torrent_rename_done_func makeRenameDoneCallback(NSDictionary* contextI
     self.fGroupValueDetermination = determinationType;
 }
 
+- (void)applyGroupDownloadLocation
+{
+    if (self.fDownloadFolderDetermination == TorrentDeterminationUserSpecified ||
+        ![GroupsController.groups usesCustomDownloadLocationForIndex:self.groupValue])
+    {
+        return;
+    }
+
+    NSString* location = [GroupsController.groups customDownloadLocationForIndex:self.groupValue];
+
+    //unfinished torrents land in the new folder when they complete; finished ones are moved now
+    if (self.allDownloaded)
+    {
+        [self moveTorrentDataFileTo:location];
+    }
+    else
+    {
+        [self changeDownloadFolderBeforeUsing:location determinationType:TorrentDeterminationAutomatic];
+    }
+}
+
 - (NSInteger)groupOrderValue
 {
     return [GroupsController.groups rowValueForIndex:self.groupValue];

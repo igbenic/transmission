@@ -15,6 +15,10 @@
 #endif
 
 #include <atomic> /* atomic, atomic_fetch_add_explicit, memory_order_relaxed */
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+#include <vector>
 
 #include <libtransmission/transmission.h>
 
@@ -63,6 +67,26 @@
 #import "Utils.h"
 
 typedef NSString* ToolbarItemIdentifier NS_TYPED_EXTENSIBLE_ENUM;
+
+namespace
+{
+// What the RPC thread may read about client groups. It is rebuilt on the main thread
+// and swapped in whole, so the RPC thread never touches AppKit objects.
+struct ClientGroupsSnapshot
+{
+    std::vector<tr_client_group> groups;
+    std::unordered_map<tr_torrent_id_t, int64_t> torrent_groups;
+};
+
+std::mutex clientGroupsMutex;
+std::shared_ptr<ClientGroupsSnapshot const> clientGroupsSnapshot = std::make_shared<ClientGroupsSnapshot>();
+
+std::shared_ptr<ClientGroupsSnapshot const> currentClientGroupsSnapshot()
+{
+    auto const lock = std::scoped_lock{ clientGroupsMutex };
+    return clientGroupsSnapshot;
+}
+} // namespace
 
 static ToolbarItemIdentifier const ToolbarItemIdentifierCreate = @"Toolbar Create";
 static ToolbarItemIdentifier const ToolbarItemIdentifierOpenFile = @"Toolbar Open";
@@ -510,6 +534,26 @@ static void removeKeRangerRansomware()
         auto const default_config_dir = tr_getDefaultConfigDir("Transmission");
         _fLib = tr_sessionInit(default_config_dir, YES, settings);
         _fConfigDirectory = @(default_config_dir.c_str());
+
+        tr_sessionSetClientGroupsProvider(
+            _fLib,
+            tr_client_groups_provider{
+                .list = []() { return currentClientGroupsSnapshot()->groups; },
+                .get =
+                    [](tr_torrent_id_t const tor_id)
+                {
+                    auto const snapshot = currentClientGroupsSnapshot();
+                    auto const it = snapshot->torrent_groups.find(tor_id);
+                    return it != std::end(snapshot->torrent_groups) ? it->second : int64_t{ -1 };
+                },
+                .set =
+                    [controller = self](tr_torrent_id_t const tor_id, int64_t const group)
+                {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [controller setClientGroup:group forTorrentID:tor_id];
+                    });
+                },
+            });
 
         tr_sessionSetIdleLimitHitCallback(
             _fLib,
@@ -2389,6 +2433,45 @@ static void removeKeRangerRansomware()
     [StatsWindowController.statsWindow showWindow:nil];
 }
 
+- (void)refreshClientGroupsSnapshot
+{
+    auto snapshot = std::make_shared<ClientGroupsSnapshot>();
+
+    GroupsController* const groups = GroupsController.groups;
+    for (NSInteger row = 0; row < groups.numberOfGroups; ++row)
+    {
+        NSInteger const index = [groups indexForRow:row];
+        NSString* const location = [groups usesCustomDownloadLocationForIndex:index] ? [groups customDownloadLocationForIndex:index] :
+                                                                                       nil;
+        snapshot->groups.push_back({ index, [groups nameForIndex:index].UTF8String, location.UTF8String ?: "" });
+    }
+
+    for (Torrent* torrent in self.fTorrents)
+    {
+        snapshot->torrent_groups.emplace(torrent.id, torrent.groupValue);
+    }
+
+    auto const lock = std::scoped_lock{ clientGroupsMutex };
+    clientGroupsSnapshot = std::move(snapshot);
+}
+
+- (void)setClientGroup:(NSInteger)group forTorrentID:(tr_torrent_id_t)torrentID
+{
+    Torrent* const torrent = [self torrentForId:torrentID];
+    if (torrent == nil || (group != -1 && [GroupsController.groups nameForIndex:group] == nil))
+    {
+        return;
+    }
+
+    [self.fTableView removeCollapsedGroup:torrent.groupValue];
+    [torrent setGroupValue:group determinationType:TorrentDeterminationUserSpecified];
+    [torrent applyGroupDownloadLocation];
+
+    [self applyFilter];
+    [self updateUI];
+    [self updateTorrentHistory];
+}
+
 - (void)updateUI
 {
     CGFloat dlRate = 0.0, ulRate = 0.0;
@@ -2396,6 +2479,7 @@ static void removeKeRangerRansomware()
     BOOL anyActive = NO;
 
     [Torrent updateTorrents:self.fTorrents];
+    [self refreshClientGroupsSnapshot];
 
     for (Torrent* torrent in self.fTorrents)
     {
@@ -3518,6 +3602,7 @@ static void removeKeRangerRansomware()
         [self.fTableView removeCollapsedGroup:torrent.groupValue]; //remove old collapsed group
 
         [torrent setGroupValue:((NSMenuItem*)sender).tag determinationType:TorrentDeterminationUserSpecified];
+        [torrent applyGroupDownloadLocation];
     }
 
     [self applyFilter];
@@ -3821,6 +3906,7 @@ static void removeKeRangerRansomware()
             for (Torrent* torrent in movingTorrents)
             {
                 [torrent setGroupValue:groupIndex determinationType:TorrentDeterminationUserSpecified];
+                [torrent applyGroupDownloadLocation];
             }
         }
 

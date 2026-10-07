@@ -310,6 +310,8 @@ void tr_sessionSetDefaultTrackers(tr_session* session, std::string_view trackers
  */
 void tr_sessionSetRPCCallback(tr_session* session, tr_rpc_func func);
 
+void tr_sessionSetClientGroupsProvider(tr_session* session, tr_client_groups_provider provider);
+
 // ---
 
 /** @brief Get bandwidth use statistics for the current session */

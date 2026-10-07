@@ -771,6 +771,20 @@ Response parameters:
 | `size_bytes` | number | the size, in bytes, of the free space in that directory
 | `total_size` | number | the total capacity, in bytes, of that directory
 
+### Client groups (fork extension)
+Clients that define their own torrent groups (the macOS app) expose them as follows.
+Other servers return an empty list.
+
+`torrent_set` and `torrent_get` accept `client_group`: an integer group `id`, or -1 for no group.
+
+Method name: `client_group_get`. Request parameters: none.
+
+Response parameters:
+
+| Key | Value type | Description
+|:--|:--|:--
+| `client_group` | array | objects with `id` (integer), `name` (string), and `download_dir` (string, empty if the group has no folder)
+
 ### 4.8 Bandwidth groups
 #### 4.8.1 Bandwidth group mutator: `group_set`
 Method name: `group_set`

@@ -715,6 +715,7 @@ namespace make_torrent_field_helpers
     case TR_KEY_availability:
     case TR_KEY_bandwidth_priority:
     case TR_KEY_bytes_completed:
+    case TR_KEY_client_group:
     case TR_KEY_comment:
     case TR_KEY_corrupt_ever:
     case TR_KEY_creator:
@@ -816,6 +817,12 @@ namespace make_torrent_field_helpers
         return tor.get_priority();
     case TR_KEY_bytes_completed:
         return make_bytes_completed_vec(tor);
+    case TR_KEY_client_group:
+        if (auto const& get = tor.session->client_groups().get; get)
+        {
+            return get(tor.id());
+        }
+        return int64_t{ -1 };
     case TR_KEY_comment:
         return tor.comment();
     case TR_KEY_corrupt_ever:
@@ -1287,6 +1294,14 @@ namespace make_torrent_field_helpers
             if (auto const priority = static_cast<tr_priority_t>(*val); tr_isPriority(priority))
             {
                 tr_torrentSetPriority(tor, priority);
+            }
+        }
+
+        if (auto const val = args_in.value_if<int64_t>(TR_KEY_client_group))
+        {
+            if (auto const& set = session->client_groups().set; set)
+            {
+                set(tor->id(), *val);
             }
         }
 
@@ -1920,6 +1935,27 @@ void add_strings_from_var(std::set<std::string_view>& strings, tr_variant const&
             add_strings_from_var(strings, vecvar);
         }
     }
+}
+
+[[nodiscard]] std::pair<JsonRpc::Error::Code, std::string> clientGroupGet(
+    tr_session* session,
+    tr_variant::Map const& /*args_in*/,
+    tr_variant::Map& args_out)
+{
+    auto groups_vec = tr_variant::Vector{};
+    if (auto const& list = session->client_groups().list; list)
+    {
+        for (auto const& group : list())
+        {
+            auto group_map = tr_variant::Map{ 3U };
+            group_map.try_emplace(TR_KEY_id, group.id);
+            group_map.try_emplace(TR_KEY_name, group.name);
+            group_map.try_emplace(TR_KEY_download_dir, group.download_dir);
+            groups_vec.emplace_back(std::move(group_map));
+        }
+    }
+    args_out.try_emplace(TR_KEY_client_group, std::move(groups_vec));
+    return { JsonRpc::Error::SUCCESS, std::string{} };
 }
 
 [[nodiscard]] std::pair<JsonRpc::Error::Code, std::string> groupGet(
@@ -2806,7 +2842,8 @@ using SessionAccessors = std::pair<SessionGetter, SessionSetter>;
 
 using SyncHandler = std::pair<JsonRpc::Error::Code, std::string> (*)(tr_session*, tr_variant::Map const&, tr_variant::Map&);
 
-auto const sync_handlers = small::max_size_map<tr_quark, std::pair<SyncHandler, bool /*has_side_effects*/>, 20U>{ {
+auto const sync_handlers = small::max_size_map<tr_quark, std::pair<SyncHandler, bool /*has_side_effects*/>, 21U>{ {
+    { TR_KEY_client_group_get, { clientGroupGet, false } },
     { TR_KEY_free_space, { freeSpace, false } },
     { TR_KEY_group_get, { groupGet, false } },
     { TR_KEY_group_set, { groupSet, true } },

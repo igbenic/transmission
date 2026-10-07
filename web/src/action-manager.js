@@ -52,6 +52,11 @@ export class ActionManager extends EventTarget {
         text: 'Select all',
       },
       'show-about-dialog': { enabled: true, text: 'About' },
+      'show-group-dialog': {
+        enabled: false,
+        shortcut: 'G',
+        text: 'Set group…',
+      },
       'show-inspector': {
         enabled: false,
         shortcut: 'I',
@@ -204,6 +209,7 @@ export class ActionManager extends EventTarget {
       'move-top',
       'move-up',
       'remove-selected-torrents',
+      'show-group-dialog',
       'show-inspector',
       'show-labels-dialog',
       'show-move-dialog',

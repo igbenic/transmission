@@ -1876,6 +1876,13 @@ uint16_t tr_sessionGetRPCPort(tr_session const* session)
     return session->rpc_server_ ? session->rpc_server_->port().host() : uint16_t{};
 }
 
+void tr_sessionSetClientGroupsProvider(tr_session* session, tr_client_groups_provider provider)
+{
+    TR_ASSERT(session != nullptr);
+
+    session->client_groups_ = std::move(provider);
+}
+
 void tr_sessionSetRPCCallback(tr_session* session, tr_rpc_func func)
 {
     TR_ASSERT(session != nullptr);

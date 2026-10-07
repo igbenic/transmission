@@ -187,6 +187,7 @@ export class ContextMenu extends EventTarget {
         new_item('verify-selected-torrents'),
         new_item('show-move-dialog'),
         new_item('show-rename-dialog'),
+        new_item('show-group-dialog'),
         new_item('show-labels-dialog'),
         new_separator(),
         new_item('reannounce-selected-torrents'),

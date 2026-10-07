@@ -94,6 +94,8 @@ auto constexpr MyStatic = std::array<std::string_view, TR_N_KEYS>{
     "clientIsChoked"sv, // rpc
     "clientIsInterested"sv, // rpc
     "clientName"sv, // rpc
+    "client_group"sv, // rpc
+    "client_group_get"sv, // rpc
     "client_is_choked"sv, // rpc
     "client_is_interested"sv, // rpc
     "client_name"sv, // rpc

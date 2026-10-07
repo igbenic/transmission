@@ -66,6 +66,7 @@ export class OpenDialog extends EventTarget {
     const { file_input, folder_input, start_input, url_input } = elements;
     const paused = !start_input.checked;
     const destination = folder_input.value.trim();
+    const group = Number.parseInt(elements.group_input.value, 10);
 
     for (const file of file_input.files) {
       const reader = new FileReader();
@@ -87,6 +88,7 @@ export class OpenDialog extends EventTarget {
           },
         };
         remote.sendRequest(o, (response) => {
+          OpenDialog._assignGroup(remote, response, group);
           if ('error' in response) {
             const message =
               response.error.data?.errorString ?? response.error.message;
@@ -119,6 +121,7 @@ export class OpenDialog extends EventTarget {
         },
       };
       remote.sendRequest(o, (payload) => {
+        OpenDialog._assignGroup(remote, payload, group);
         if ('error' in payload) {
           controller.setCurrentPopup(
             new AlertDialog({
@@ -131,6 +134,25 @@ export class OpenDialog extends EventTarget {
     }
 
     this._onDismiss();
+  }
+
+  static _assignGroup(remote, response, group) {
+    const added =
+      response?.result?.torrent_added ?? response?.result?.torrent_duplicate;
+    if (group >= 0 && added) {
+      remote.setClientGroup([added.id], group, () =>
+        remote._controller.refreshTorrents(),
+      );
+    }
+  }
+
+  _onGroupChanged() {
+    const { group_input, folder_input } = this.elements;
+    const dir = group_input.selectedOptions[0]?.dataset.downloadDir;
+    if (dir) {
+      folder_input.value = dir;
+      this._updateFreeSpaceInAddDialog();
+    }
   }
 
   _create(url) {
@@ -191,6 +213,34 @@ export class OpenDialog extends EventTarget {
     input.value = this.controller.session_properties.download_dir;
     workarea.append(input);
     elements.folder_input = input;
+
+    const group_label = document.createElement('label');
+    group_label.id = 'add-dialog-group-label';
+    group_label.textContent = 'Group: ';
+    group_label.hidden = true;
+    const group_select = document.createElement('select');
+    group_select.id = 'add-dialog-group-input';
+    const no_group = document.createElement('option');
+    no_group.value = '-1';
+    no_group.textContent = 'No group';
+    group_select.append(no_group);
+    group_select.addEventListener('change', () => this._onGroupChanged());
+    group_label.append(group_select);
+    workarea.append(group_label);
+    elements.group_input = group_select;
+    this.remote.loadClientGroups((groups) => {
+      if (this.closed || groups.length === 0) {
+        return;
+      }
+      for (const g of groups) {
+        const option = document.createElement('option');
+        option.value = String(g.id);
+        option.textContent = g.name;
+        option.dataset.downloadDir = g.download_dir;
+        group_select.append(option);
+      }
+      group_label.hidden = false;
+    });
 
     const checkarea = document.createElement('div');
     workarea.append(checkarea);

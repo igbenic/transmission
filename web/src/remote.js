@@ -145,6 +145,33 @@ export class Remote {
     );
   }
 
+  // Resolves to [] on servers without client group support.
+  loadClientGroups(callback) {
+    this.sendRequest(
+      {
+        id: 'webui',
+        jsonrpc: RPC._JsonRpcVersion,
+        method: 'client_group_get',
+      },
+      (response) => callback(response?.result?.client_group ?? []),
+    );
+  }
+
+  setClientGroup(torrentIds, group, callback) {
+    this.sendRequest(
+      {
+        id: 'webui',
+        jsonrpc: RPC._JsonRpcVersion,
+        method: 'torrent_set',
+        params: {
+          client_group: group,
+          ids: torrentIds,
+        },
+      },
+      callback,
+    );
+  }
+
   loadDaemonStats(callback, context) {
     const o = {
       id: 'webui',

@@ -187,6 +187,7 @@ extern NSString* const kTorrentDidChangeGroupNotification;
 @property(nonatomic, readonly) uint64_t failedHash;
 
 @property(nonatomic, readonly) NSInteger groupValue;
+- (void)applyGroupDownloadLocation;
 - (void)setGroupValue:(NSInteger)groupValue determinationType:(TorrentDeterminationType)determinationType;
 ;
 @property(nonatomic, readonly) NSInteger groupOrderValue;
